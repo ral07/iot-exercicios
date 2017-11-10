@@ -36,9 +36,9 @@ void setup() {
   while (!Serial) {};
 
   #ifdef ONLINE
-  configurarEthernet()
+  configurarEthernet();
 
-  conectarMQTT()
+  conectarMQTT();
   #endif
 }
 
@@ -49,10 +49,17 @@ void configurarEthernet() {
 }
 
 int conectarMQTT() {
-  return client.connect(MQTT_CLIENT_ID, topic, 0, true, "");
+  if(client.connect(MQTT_CLIENT_ID, topic, 0, true, "")) {
+		Serial.println("Conectado ao broker MQTT");
+		return true;
+	} else {
+		Serial.println("Falha a conectar ao broker MQTT");
+		return false;
+	}
 }
 
 void atualizarDistancia(int distancia) {
+	Serial.print("Distancia: "); Serial.println(distancia);
   if(distancia < DISTANCIA_MINIMA) {
     avisarOcupada(1);
   } else {
@@ -63,17 +70,19 @@ void atualizarDistancia(int distancia) {
 void avisarOcupada(int ocupada) {
   if(ocupada) {
     digitalWrite(PIN_OCUPADO, HIGH);
+		Serial.println("Ocupada");
   } else {
     digitalWrite(PIN_OCUPADO, LOW);
-  }
+		Serial.println("Livre");
+	}
   publicarOcupadaMQTT(ocupada);
 }
 
 void publicarOcupadaMQTT(int ocupada) {
   if (ocupada) {
-    client.publish(topic, "1", true);
-  } else {
     client.publish(topic, "0", true);
+  } else {
+    client.publish(topic, "1", true);
   }
 }
 
@@ -84,7 +93,7 @@ int checkReconectarMQTT() {
   if(!client.connected()) {
     long agora = millis();
     if(agora - ultimaTentativaReconectar > 5000) {
-      Serial.println("reconectando...");
+      Serial.println("Reconectando...");
       return conectarMQTT();
     }
     ultimaTentativaReconectar = agora;

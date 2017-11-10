@@ -81,10 +81,16 @@ void debugMensagem(int id, int status, int tamanho) {
 
 void processarAlteracaoVaga(int id, int status, int tamanhoMensagem) {
 	// subtraímos 1 pois a contagem começa em 0
-  int indice = id - 1;
+	int indice = id - 1;
 
-	if (tamanhoMensagem == 0) {
-		// mensagem vazia, devemos considerar que a vaga não existe mais
+	if (id <= 0 || id > QUANTIDADE_VAGAS) {
+		// Vaga fora do intervalo correto
+		// a instrução "return" vai sair desta função sem executar mais nada
+		return;
+	}
+
+	if (tamanhoMensagem != 1) {
+		// mensagem vazia ou mal-formada, devemos considerar que a vaga não existe mais
 		vagas[indice] = -1;
 	} else {
 		vagas[indice] = status;

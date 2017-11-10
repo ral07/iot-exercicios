@@ -19,7 +19,7 @@ LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 #endif
 
 // const char* MQTT_SERVER = "test.mosquitto.org";
-IPAddress MQTT_SERVER(192, 168, 3, 136);
+IPAddress MQTT_SERVER(192, 168, 3, 186);
 const int MQTT_PORT = 1883;
 const char* MQTT_CLIENT_ID = "arduino-placa-42";
 
@@ -61,9 +61,22 @@ void callback(char* topico, byte* mensagem, unsigned int tamanhoMensagem) {
 
 	// Converter primeiro caractere da mensagem em número
 	// isto assume que esse caractere está entre '0' e '9'
-  int status = mensagem[0] - '0';
+	int status = mensagem[0] - '0';
 
+	debugMensagem(idVaga, status, tamanhoMensagem);
 	processarAlteracaoVaga(idVaga, status, tamanhoMensagem);
+}
+
+void debugMensagem(int id, int status, int tamanho) {
+	Serial.println("Mensagem ---");
+	Serial.print("Vaga: "); Serial.println(id);
+	Serial.print("Status: "); Serial.println(status);
+	Serial.print("Tamanho: "); Serial.println(tamanho);
+	Serial.println();
+
+	// utilizamos o metodo flush() para garantir que o texto anterior seja
+	// escrito completamente para a porta serial
+	Serial.flush();
 }
 
 void processarAlteracaoVaga(int id, int status, int tamanhoMensagem) {
@@ -73,9 +86,10 @@ void processarAlteracaoVaga(int id, int status, int tamanhoMensagem) {
 	if (tamanhoMensagem == 0) {
 		// mensagem vazia, devemos considerar que a vaga não existe mais
 		vagas[indice] = -1;
+	} else {
+		vagas[indice] = status;
 	}
 
-	vagas[indice] = status;
 	atualizarContagem();
 }
 
@@ -133,7 +147,7 @@ void exibirContagem(int livres, int ocupadas) {
   lcd.print(ocupadas);
 }
 
-PubSubClient client(MQTT_SERVER, callback, MQTT_PORT, ethClient);
+PubSubClient client(MQTT_SERVER, MQTT_PORT, callback, ethClient);
 
 void setup() {
   Serial.begin(9600);
@@ -156,20 +170,29 @@ void setup() {
 void configurarEthernet() {
   if(!Ethernet.begin(mac)) {
     Serial.println("Falha no DHCP");
-  };
+  } else {
+		Serial.print("IP obtido: "); Serial.println(Ethernet.localIP());
+	};
 }
 
 int conectarMQTT() {
-  return client.connect(MQTT_CLIENT_ID);
+  if(client.connect(MQTT_CLIENT_ID)) {
+		client.subscribe(topic);
+		Serial.println("Conectado ao broker MQTT");
+		return true;
+	} else {
+		Serial.println("Falha a conectar ao broker MQTT");
+		return false;
+	}
 }
 
 // Variavel global para guardar o tempo da última tentativa de conexão
 unsigned long ultimaTentativaReconectar = 0;
 int checkReconectarMQTT() {
-  if(!client.connected()) {
+  if (!client.connected()) {
     long agora = millis();
     if(agora - ultimaTentativaReconectar > 5000) {
-      Serial.println("reconectando...");
+      Serial.println("Reconectando...");
       return conectarMQTT();
     }
     ultimaTentativaReconectar = agora;

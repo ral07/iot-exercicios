@@ -16,7 +16,7 @@ EthernetClient ethClient;
 #endif
 
 // const char* MQTT_SERVER = "test.mosquitto.org";
-IPAddress MQTT_SERVER(192, 168, 3, 136);
+IPAddress MQTT_SERVER(192, 168, 3, 186);
 const int MQTT_PORT = 1883;
 const char* MQTT_CLIENT_ID = "arduino-vaga-42";
 
@@ -29,7 +29,7 @@ const int DISTANCIA_MINIMA = 8; // cm
 Ultrasonic ultrasonic(8, 9);
 
 // Como nesta unidade não pretendemos receber mensagens, podemos passar o valor NULL no lugar de um callback
-PubSubClient client(MQTT_SERVER, NULL, MQTT_PORT, ethClient);
+PubSubClient client(MQTT_SERVER, MQTT_PORT, NULL, ethClient);
 
 void setup() {
   Serial.begin(9600);
@@ -49,7 +49,7 @@ void configurarEthernet() {
 }
 
 int conectarMQTT() {
-  return client.connect(MQTT_CLIENT_ID);
+  return client.connect(MQTT_CLIENT_ID, topic, 0, true, "");
 }
 
 void atualizarDistancia(int distancia) {

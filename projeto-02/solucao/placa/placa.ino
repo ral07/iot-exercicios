@@ -1,11 +1,11 @@
+#include <LiquidCrystal.h>
 #include <UIPEthernet.h>
 byte mac[] = { 0xDE, 0xED, 0xBA, 0xFE, 0xFE, 0x42 };
 EthernetClient ethClient;
 
-const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
+const int rs = 7, en = 6, d4 = 5, d5 = 4, d6 = 3, d7 = A0;
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
-#include <LiquidCrystal.h>
 
 // Se não definirmos o nome ONLINE, podemos utilizar uma versão diferente da
 // biblioteca que simula MQTT via a comunicação serial
@@ -26,7 +26,7 @@ const char* MQTT_CLIENT_ID = "arduino-placa-42";
 const char* topic = "vagas/#";
 
 const int QUANTIDADE_VAGAS = 50;
-const int vagas[QUANTIDADE_VAGAS] = {};
+int vagas[QUANTIDADE_VAGAS] = {};
 
 const int STATUS_OCUPADA = 0;
 const int STATUS_LIVRE = 1;
@@ -54,7 +54,7 @@ int extrairIdVaga(char* topico) {
 
 // Variável global para armazenarmos o instante que recebemos a ultima mensagem MQTT
 long tempoUltimaMensagemMQTT = 0;
-void callback(char* topico, byte* mensagem, unsigned int length) {
+void callback(char* topico, byte* mensagem, unsigned int tamanhoMensagem) {
   tempoUltimaMensagemMQTT = millis();
 
 	int idVaga = extrairIdVaga(topico);
@@ -63,19 +63,19 @@ void callback(char* topico, byte* mensagem, unsigned int length) {
 	// isto assume que esse caractere está entre '0' e '9'
   int status = mensagem[0] - '0';
 
-	processarAlteracaoVaga(idVaga, status);
+	processarAlteracaoVaga(idVaga, status, tamanhoMensagem);
 }
 
-void processarAlteracaoVaga(int id, int status) {
+void processarAlteracaoVaga(int id, int status, int tamanhoMensagem) {
 	// subtraímos 1 pois a contagem começa em 0
-  int indice = idVaga - 1;
+  int indice = id - 1;
 
-	if (length == 0) {
+	if (tamanhoMensagem == 0) {
 		// mensagem vazia, devemos considerar que a vaga não existe mais
 		vagas[indice] = -1;
 	}
 
-	vagas[indice] = msg;
+	vagas[indice] = status;
 	atualizarContagem();
 }
 
@@ -119,7 +119,7 @@ void atualizarContagem() {
 }
 
 // Atualiza LCD com contagem das vagas
-exibirContagem(int livres, int ocupadas) {
+void exibirContagem(int livres, int ocupadas) {
   lcd.clear();
   if (livres == 0) {
     lcd.print("SEM VAGAS LIVRES");
@@ -137,15 +137,19 @@ PubSubClient client(MQTT_SERVER, callback, MQTT_PORT, ethClient);
 
 void setup() {
   Serial.begin(9600);
-  while (!Serial) {};
+	while (!Serial) {};
+
+	// Como estamos utilizando o pino analógico 0 como digital para o LCD
+	// temos que configurá-lo como OUTPUT
+	pinMode(A0, OUTPUT);
 
   lcd.begin(16, 2);
 
   inicializarVagas();
   #ifdef ONLINE
-  configurarEthernet()
+  configurarEthernet();
 
-  conectarMQTT()
+  conectarMQTT();
   #endif
 }
 
@@ -178,7 +182,7 @@ const long TEMPO_DESLIGAR_LED = 10 * 1000;
 void checkDesligarLCD() {
   long agora = millis();
   if(agora - tempoUltimaMensagemMQTT > TEMPO_DESLIGAR_LED) {
-    lcd.noDisplay()
+    lcd.noDisplay();
   } else {
     lcd.display();
   }
